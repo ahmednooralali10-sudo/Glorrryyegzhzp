@@ -1,0 +1,26 @@
+[
+  {
+    "uid": "4555632289",
+    "password": "S7LKFJ8EWQTE-S1X_TEAM",
+    "region": "ME",
+    "clan_id": "3105804644"
+  },
+  {
+    "uid": "4555632916",
+    "password": "S7LRPTVFY61P-S1X_TEAM",
+    "region": "ME",
+    "clan_id": "3105804644"
+  ( },
+  {
+    "uid": "455633110",
+    "password": "S7LWOJ68GAHY-S1X_TEAM",
+    "region": "ME",
+    "clan_id": "3105804644"
+  },
+  {
+    "uid": "455633862",
+    "password": "S7LBPLQSWOIE-S1X_TEAM",
+    "region": "ME",
+    "clan_id": "3105804644"
+  }
+]
