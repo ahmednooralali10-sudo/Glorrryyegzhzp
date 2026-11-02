@@ -31,9 +31,15 @@ const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g
 const STORE='rafin_dashboard_users_v1';let current=null,accounts=[],logs=[],filter='all',auto=true,startedAt=Date.now(),fetchBusy=false;
 function readUsers(){try{const x=JSON.parse(localStorage.getItem(STORE)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
 function saveUsers(x){localStorage.setItem(STORE,JSON.stringify(x))}
-function ensureAdmin(){let u=readUsers();if(!u.some(x=>x.username===ADMIN_DEFAULT.username)){u.unshift({username:ADMIN_DEFAULT.username,password:ADMIN_DEFAULT.password,role:'admin',active:true});saveUsers(u)}}
+function ensureAdmin(){
+  const users=readUsers();
+  const index=users.findIndex(x=>String(x.username||'').trim().toLowerCase()===ADMIN_DEFAULT.username.toLowerCase());
+  const admin={...(index>=0?users[index]:{}),username:ADMIN_DEFAULT.username,password:ADMIN_DEFAULT.password,role:'admin',active:true};
+  if(index>=0) users[index]=admin; else users.unshift(admin);
+  saveUsers(users);
+}
 function toast(msg,type='ok'){let e=document.createElement('div');e.className='toast '+(type==='err'?'err':'ok');e.textContent=msg;$('toastbox').append(e);setTimeout(()=>e.remove(),3500)}
-function login(user){current=user;$('loginScreen').classList.add('hidden');$('app').hidden=false;$('currentUser').textContent=user.username;$('adminWho').textContent=user.username;$('adminNav').classList.toggle('hidden',user.role!=='admin');document.querySelectorAll('[data-page="admin"]').forEach(x=>x.classList.toggle('hidden',user.role!=='admin'));go('core');fetchStats()}
+function login(user){current=user;$('loginScreen').classList.add('hidden');$('app').hidden=false;$('currentUser').textContent=user.username;if($('adminWho'))$('adminWho').textContent=user.username;$('adminNav').classList.toggle('hidden',user.role!=='admin');document.querySelectorAll('[data-page="admin"]').forEach(x=>x.classList.toggle('hidden',user.role!=='admin'));if(user.role==='admin')renderUsers();go('core');fetchStats()}
 ensureAdmin();
 $('loginForm').addEventListener('submit',e=>{e.preventDefault();const name=$('loginUser').value.trim(),pass=$('loginPass').value;const user=readUsers().find(x=>x.username.toLowerCase()===name.toLowerCase()&&x.password===pass&&x.active!==false);if(!user){$('loginError').textContent='Incorrect username or password, or account disabled.';return}$('loginError').textContent='';login(user)});
 $('logoutBtn').addEventListener('click',()=>{current=null;$('app').hidden=true;$('loginScreen').classList.remove('hidden');$('loginPass').value='';$('loginUser').value='';$('loginUser').focus()});
