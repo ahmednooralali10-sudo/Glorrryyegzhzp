@@ -169,12 +169,12 @@ button{cursor:pointer;background:none;border:0}
 
 <div class="app" id="app">
   <aside class="sidebar">
-    <div class="brand"><div class="logo"><i class="fa-solid fa-bolt"></i></div><div><b>RAFIN TxT</b><small>Real-Time Command Center</small></div></div>
+    <div class="brand"><div class="logo"><i class="fa-solid fa-bolt"></i></div><div><b>RAFIN TxT</b><small>Solo Lone Wolf Center</small></div></div>
     <nav class="nav">
       <button class="nav-item active" data-page="core" data-title="Command Core"><i class="fa-solid fa-gauge-high"></i>Command Core</button>
       <button class="nav-item" data-page="targets" data-title="Accounts"><i class="fa-solid fa-network-wired"></i>Accounts</button>
       <button class="nav-item" data-page="terminal" data-title="Live Console"><i class="fa-solid fa-terminal"></i>Live Console</button>
-      <button class="nav-item team" data-open="teamModal"><i class="fa-solid fa-users-gear"></i>Create Team</button>
+      <button class="nav-item team" data-open="teamModal"><i class="fa-solid fa-users-gear"></i>Create Solo</button>
     </nav>
     <div class="side-foot"><span>Engine status</span><b id="sideStatus">ONLINE</b></div>
   </aside>
@@ -182,7 +182,7 @@ button{cursor:pointer;background:none;border:0}
   <div class="shell">
     <header class="topbar">
       <div class="brand-m"><div class="logo"><i class="fa-solid fa-bolt"></i></div><span>RAFIN TxT</span></div>
-      <div class="crumb"><span>Command Center</span><i class="fa-solid fa-chevron-right" style="font-size:10px"></i><b id="topTitle">Command Core</b></div>
+      <div class="crumb"><span>Solo Lone Wolf</span><i class="fa-solid fa-chevron-right" style="font-size:10px"></i><b id="topTitle">Command Core</b></div>
       <div class="top-right">
         <div class="pill" id="pill"><i class="dot"></i><span id="pillText">ONLINE</span></div>
       </div>
@@ -218,7 +218,7 @@ button{cursor:pointer;background:none;border:0}
           <div><h1 class="page-title">Accounts</h1><p class="page-sub">Manage connected accounts</p></div>
           <div class="row">
             <button class="btn" id="btnPauseAll"><i class="fa-solid fa-pause"></i><span>Pause All</span></button>
-            <button class="btn ok" data-open="teamModal"><i class="fa-solid fa-users-gear"></i>Create Team</button>
+            <button class="btn ok" data-open="teamModal"><i class="fa-solid fa-users-gear"></i>Create Solo</button>
             <button class="btn primary" id="btnAdd"><i class="fa-solid fa-plus"></i>Add Account</button>
           </div>
         </div>
@@ -237,7 +237,7 @@ button{cursor:pointer;background:none;border:0}
 
       <section id="page-terminal" class="page">
         <div class="page-head">
-          <div><h1 class="page-title">Live Console</h1><p class="page-sub">Live backend execution logs</p></div>
+          <div><h1 class="page-title">Live Console</h1><p class="page-sub">Live backend execution logs (shows generated UID & Password)</p></div>
           <div class="row">
             <button class="btn on" id="btnAutoscroll"><i class="fa-solid fa-arrow-down"></i>Auto-scroll</button>
             <button class="btn" id="btnClearLogs"><i class="fa-solid fa-trash"></i>Clear logs</button>
@@ -259,7 +259,7 @@ button{cursor:pointer;background:none;border:0}
   <button class="tab active" data-page="core" data-title="Command Core"><i class="fa-solid fa-gauge-high"></i>Core</button>
   <button class="tab" data-page="targets" data-title="Accounts"><i class="fa-solid fa-network-wired"></i>Accounts</button>
   <button class="tab" data-page="terminal" data-title="Live Console"><i class="fa-solid fa-terminal"></i>Console</button>
-  <button class="tab team" data-open="teamModal"><i class="fa-solid fa-users-gear"></i>Team</button>
+  <button class="tab team" data-open="teamModal"><i class="fa-solid fa-users-gear"></i>Solo</button>
 </nav>
 
 <div class="modal" id="addModal" aria-hidden="true">
@@ -280,16 +280,16 @@ button{cursor:pointer;background:none;border:0}
 
 <div class="modal" id="teamModal" aria-hidden="true">
   <div class="sheet">
-    <h2>Create team</h2>
+    <h2>Create Solo Bots</h2>
     <form id="teamForm" novalidate>
-      <p class="lead">New guest accounts are created, join the clan, and start Team Match together.</p>
+      <p class="lead">New guest accounts are created, join the clan, and start Solo Lone Wolf matches independently.</p>
       <div class="two">
         <div class="field"><label for="teamRegion">Region</label><select id="teamRegion">
           <option value="BD">BD — Bangladesh</option><option value="IND">IND — India</option><option value="ID">ID — Indonesia</option><option value="ME">ME — Middle East</option><option value="PK">PK — Pakistan</option><option value="VN">VN — Vietnam</option><option value="TH">TH — Thailand</option><option value="TW">TW — Taiwan</option><option value="RU">RU — Russia</option><option value="SAC">SAC — South America</option><option value="BR">BR — Brazil</option><option value="NA">NA — North America</option><option value="SG">SG — Singapore</option><option value="US">US — United States</option></select></div>
-        <div class="field"><label for="teamClan">Clan ID</label><input id="teamClan" type="text" inputmode="numeric" value="3105458988"></div>
+        <div class="field"><label for="teamClan">Clan ID (optional)</label><input id="teamClan" type="text" inputmode="numeric" value="3105458988"></div>
       </div>
       <div class="two">
-        <div class="field"><label for="teamCount">Bots</label><select id="teamCount"><option value="4" selected>4 bots (full team)</option><option value="3">3 bots</option><option value="2">2 bots</option></select></div>
+        <div class="field"><label for="teamCount">Bots</label><select id="teamCount"><option value="4" selected>4 bots</option><option value="3">3 bots</option><option value="2">2 bots</option></select></div>
         <div class="field"><label for="teamPass">Password</label><input id="teamPass" type="text" value="RAFIN TxT"></div>
       </div>
       <div class="card-actions"><button type="button" class="btn" data-close="teamModal">Cancel</button><button type="submit" class="btn ok" id="teamSubmit"><i class="fa-solid fa-bolt"></i>Create &amp; Start</button></div>
@@ -514,7 +514,7 @@ function nodeHTML(acc, uid, c){
   </div>`;
 }
 function emptyHTML(){
-  return `<i class="fa-solid fa-ghost big"></i>No accounts yet.<br><button class="btn ok" data-open="teamModal"><i class="fa-solid fa-users-gear"></i>Create Team</button><button class="btn primary" data-act="add"><i class="fa-solid fa-plus"></i>Add Account</button>`;
+  return `<i class="fa-solid fa-ghost big"></i>No accounts yet.<br><button class="btn ok" data-open="teamModal"><i class="fa-solid fa-users-gear"></i>Create Solo</button><button class="btn primary" data-act="add"><i class="fa-solid fa-plus"></i>Add Account</button>`;
 }
 function renderDist(cats){
   const n = {match:0, online:0, paused:0, error:0};
@@ -701,3 +701,5 @@ setInterval(() => {
 }, 1000);
 toggleFormType();
 </script>
+</body>
+</html>
