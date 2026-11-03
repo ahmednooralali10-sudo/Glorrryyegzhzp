@@ -1,19 +1,12 @@
 # -*- coding: utf-8 -*-
 # ╔══════════════════════════════════════════════════════════════════════╗
 # ║                                                                      ║
-# ║   ██████╗  █████╗ ███████╗██╗███╗   ██╗                              ║
-# ║   ██╔══██╗██╔══██╗██╔════╝██║████╗  ██║                              ║
-# ║   ██████╔╝███████║█████╗  ██║██╔██╗ ██║                              ║
-# ║   ██╔══██╗██╔══██║██╔══╝  ██║██║╚██╗██║                              ║
-# ║   ██║  ██║██║  ██║██║     ██║██║ ╚████║                              ║
-# ║   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═══╝                              ║
-# ║                                                                      ║
 # ║          ✦  R A F I N   T x T  ✦   P R E M I U M  ✦                  ║
 # ║                                                                      ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 #
 #  ╭──────────────────────────────────────────────────────────────────╮
-#  │  ◆ PROJECT   ›  FREE FIRE 4-BOT SQUAD + AUTO CREATE + MOVEMENT   │
+#  │  ◆ PROJECT   ›  FREE FIRE SOLO LONE WOLF + AUTO CREATE + XP      │
 #  │  ◆ MODULE    ›  Main.py                                          │
 #  │  ◆ AUTHOR    ›  RAFIN TxT                                        │
 #  │  ◆ ENGINE    ›  Python 3.10+                                     │
@@ -65,7 +58,7 @@ INDEX_HTML_PATH = "rafin_txt_565/index.html"
 
 START_MATCH_INTERVAL = 3.0
 NEW_MATCH_DELAY = 2.0
-MAX_MATCH_DURATION = 1500
+MAX_MATCH_DURATION = 600  # <--- تم تعديلها لـ 10 دقائق لضمان حساب الخبرة
 MATCH_IDLE_TIMEOUT  = 35.0
 
 NO_MATCH_RESTART_ENABLED  = True
@@ -75,7 +68,8 @@ NO_MATCH_RESTART_GRACE    = 60.0
 _accept_friend_request = True
 DEBUG_ALL_PACKETS = False
 
-TEAM_MODE = True
+# ==================== SOLO MODE ====================
+TEAM_MODE = False  # <--- تم تعديلها إلى False للعب سولو (منفردين)
 TEAM_SIZE = 4
 TEAM_READY_DELAY = 5.0
 TEAM_INVITE_WAIT = 2.5
@@ -152,7 +146,6 @@ REGION_LANG = {"ME":"ar","IND":"hi","ID":"id","VN":"vi","TH":"th","BD":"bn",
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 class PX:
-    """Premium 256-color palette — unique, never-seen-before."""
     RESET   = "\033[0m"
     BOLD    = "\033[1m"
     DIM     = "\033[2m"
@@ -244,8 +237,8 @@ def print_banner():
     print(f"{violet}    ╔══════════════════════════════════════════════════════════╗{R}")
     print(f"{violet}    ║{R}   {gold}{b}✦  R A F I N   T x T   ✦{R}   {rose}{b}P R E M I U M{R}   {violet}║{R}")
     print(f"{violet}    ╠══════════════════════════════════════════════════════════╣{R}")
-    print(f"{violet}    ║{R}   {cyan}▸ FREE FIRE 4-BOT SQUAD ENGINE{R}                          {violet}║{R}")
-    print(f"{violet}    ║{R}   {silver}▸ Auto Create · Anti-AFK · Multi-Region · Team{R}          {violet}║{R}")
+    print(f"{violet}    ║{R}   {cyan}▸ FREE FIRE SOLO LONE WOLF ENGINE{R}                     {violet}║{R}")
+    print(f"{violet}    ║{R}   {silver}▸ Auto Create · Anti-AFK · Multi-Region · Solo{R}         {violet}║{R}")
     print(f"{violet}    ║{R}   {teal}▸ Engine v2.0  ·  Python 3.10+{R}                         {violet}║{R}")
     print(f"{violet}    ╚══════════════════════════════════════════════════════════╝{R}")
     print(f"{PX.SLATE}              © 2026 RAFIN TxT — All rights reserved.{R}")
@@ -479,7 +472,6 @@ async def _schedule_restart():
         except Exception as e2:
             print_error(f"[RESTART] subprocess: {e2}"); os._exit(1)
 
-# ── Backward-compat alias (পুরনো কোডে C.GREEN ইত্যাদি ব্যবহৃত হলে) ──
 class C:
     GREEN=PX.EMERALD; FAIL=PX.CRIMSON; WARNING=PX.AMBER
     CYAN=PX.CYAN; MAGENTA=PX.MAGENTA; WHITE=PX.WHITE; ENDC=PX.RESET
@@ -1863,7 +1855,8 @@ async def play_game(server_ip_port, thunder, sharma, udp_key, match_code,
                 except Exception: pass
                 async def _post_exp(uid):
                     try:
-                        for wait in (5.0, 8.0, 12.0):
+                        # <--- تم زيادة وقت الانتظار لضمان احتساب الخبرة
+                        for wait in (15.0, 30.0, 60.0, 90.0, 120.0):
                             await asyncio.sleep(wait)
                             await refresh_account_profile(uid)
                     except Exception: pass
@@ -2299,11 +2292,12 @@ async def functional_lone_wolf(addrs, starter_packet, account_region, client_ver
                             effective_acc_id = match_account_id or account_id or "BD_BOT"
                             if token and udp_key and match_code and server_ip_port:
                                 acc_tok = current_account_data.get('access_token', '') if current_account_data else ""
+                                # <--- تم تعديل mode_id إلى 15 (Lone Wolf)
                                 thunder, sharma = await build_match_startup_packets(
                                     token, udp_key, match_code, effective_acc_id, block_val or 0,
                                     server_ip=server_ip_port, region=account_region,
                                     client_version=client_version, access_token=acc_tok,
-                                    mode_id=1, map_id=1)
+                                    mode_id=15, map_id=1)
                                 match_index = await _inc_match(uid_str)
                                 print_info(f"Match #{match_index} → {server_ip_port}")
                                 try:
@@ -3166,7 +3160,7 @@ async def main():
     except Exception as e:
         print_error(f"BOOT autoload failed: {e}")
     asyncio.create_task(_no_match_watchdog())
-    print_rule("RAFIN TxT · Premium · All Systems Online", color=PX.EMERALD)
+    print_rule("RAFIN TxT · Solo Lone Wolf · All Systems Online", color=PX.EMERALD)
     try:
         while True:
             await asyncio.sleep(1)
@@ -3185,5 +3179,5 @@ if __name__ == "__main__":
         print_warning("stopped")
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║   End of file  —  RAFIN TxT  —  Premium Edition                      ║
+# ║   End of file  —  RAFIN TxT  —  Solo Lone Wolf Edition               ║
 # ╚══════════════════════════════════════════════════════════════════════╝
