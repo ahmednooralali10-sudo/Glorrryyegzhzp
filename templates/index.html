@@ -252,7 +252,7 @@ table.users tr:hover{background:rgba(139,92,246,.05)}
 
       <section id="page-terminal" class="page">
         <div class="page-head">
-          <div><h1 class="page-title">Live Console</h1><p class="page-sub">Live backend logs (Shows UID & Password)</p></div>
+          <div><h1 class="page-title">Live Console</h1><p class="page-sub">Live backend logs</p></div>
           <div class="row">
             <button class="btn on" id="btnAutoscroll"><i class="fa-solid fa-arrow-down"></i>Auto-scroll</button>
             <button class="btn" id="btnClearLogs"><i class="fa-solid fa-trash"></i>Clear logs</button>
@@ -267,7 +267,6 @@ table.users tr:hover{background:rgba(139,92,246,.05)}
         </div>
       </section>
 
-      <!-- ADMIN PAGE -->
       <section id="page-admin" class="page">
         <div class="page-head">
           <div><h1 class="page-title">Admin Panel</h1><p class="page-sub">Manage users & access</p></div>
@@ -354,10 +353,19 @@ table.users tr:hover{background:rgba(139,92,246,.05)}
 
 <script>
 "use strict";
+/* ============================================================
+   ملاحظة مهمة:
+   - لم يعد هناك أي تحقق من auth/me
+   - اللوحة تفتح مباشرة
+   - كل الدوال معرّفة قبل الاستخدام
+   ============================================================ */
+
 const EXP_TABLE = {1:0,2:48,3:202,4:544,5:1012,6:1844,7:2792,8:3800,9:4870,10:6004,11:7192,12:8448,13:9760,14:11140,15:12566,16:14060,17:15610,18:17224,19:18902,20:20632,21:22424,22:24278,23:26192,24:28166,25:30200,26:32294,27:34448,28:37804,29:41274,30:44870,31:48582,32:53394,33:58566,34:64096,35:69994,36:76460,37:83506,38:91128,39:99322,40:108092,41:120144,42:133266,43:147472,44:162760,45:179126,46:196572,47:215368,48:235516,49:257010,50:279860,51:304056,52:348318,53:394982,54:444044,55:495508,56:549364,57:633756,58:721744,59:813336,60:908522,61:1041438,62:1180352,63:1325266,64:1476184,65:1634300,66:1840946,67:2056594,68:2281242,69:2514880,70:2757530,71:3059506,72:3372284,73:3699456,74:4041030,75:4397002,76:4829104,77:5282204,78:5756304,79:6251408,80:6776502,81:7381324,82:8043154,83:8752982,84:9510808,85:10316338,86:11277190,87:12291748,88:13360304,89:14482858,90:15659418,91:17026708,92:18453950,93:19941280,94:21488570,95:23095858,96:24763138,97:26490428,98:28378704,99:30124996,100:32032884};
+
 const $ = id => document.getElementById(id);
 const esc = s => s == null ? "" : String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
-const state = {accounts:[], logs:[], online:true, loaded:false, last:null, serverUptime:null, upAt:Date.now(), user:{username:"Operator", role:"admin"}};
+
+const state = {accounts:[], logs:[], online:true, loaded:false, last:null, serverUptime:null, upAt:Date.now()};
 let activeFilter = "all", activeLogFilter = "all", autoScroll = true, started = false, rendering = false, confirmRes = null;
 const clientStart = Date.now();
 
@@ -385,9 +393,9 @@ function toast(msg, type = "info"){
   box.appendChild(el);
   setTimeout(() => { el.classList.add("hide"); setTimeout(() => el.remove(), 350); }, 3600);
 }
-function openModal(id){ const m = $(id); m.classList.add("active"); m.setAttribute("aria-hidden","false"); }
+function openModal(id){ const m = $(id); if(!m) return; m.classList.add("active"); m.setAttribute("aria-hidden","false"); }
 function closeModal(id){
-  const m = $(id); if(!m.classList.contains("active")) return;
+  const m = $(id); if(!m) return;
   m.classList.remove("active"); m.setAttribute("aria-hidden","true");
   if(id === "confirmModal" && confirmRes){ const r = confirmRes; confirmRes = null; r(false); }
 }
@@ -398,14 +406,6 @@ document.addEventListener("keydown", e => { if(e.key === "Escape"){ const o = [.
 function confirmDialog(msg){ $("confirmMsg").textContent = msg; openModal("confirmModal"); return new Promise(r => { confirmRes = r; }); }
 $("confirmNo").addEventListener("click", () => closeModal("confirmModal"));
 $("confirmYes").addEventListener("click", () => { if(confirmRes){ const r = confirmRes; confirmRes = null; r(true); } closeModal("confirmModal"); });
-
-/* ---------- INIT (بدون تسجيل دخول) ---------- */
-function showApp(){
-  go("core");
-  fetchStats();
-  setInterval(() => { if(!document.hidden) fetchStats(); }, 3000);
-}
-showApp();
 
 /* ---------- API ---------- */
 async function post(url, body){
@@ -423,7 +423,227 @@ async function get(url){
 const busy = new Set();
 async function guard(key, fn){ if(busy.has(key)) return; busy.add(key); try{ await fn(); } finally{ busy.delete(key); } }
 
-/* add account */
+/* ---------- NAV ---------- */
+const PAGES = ["core", "targets", "terminal", "admin"];
+function go(page){
+  if(!PAGES.includes(page)) page = "core";
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + page));
+  document.querySelectorAll("[data-page]").forEach(b => {
+    const on = b.dataset.page === page; b.classList.toggle("active", on);
+    if(on) $("topTitle").textContent = b.dataset.title;
+  });
+  $("content").scrollTop = 0;
+  if(page === "admin") fetchUsers();
+  if(page === "terminal") requestAnimationFrame(() => { if(autoScroll) scrollLogsToEnd(); });
+}
+document.querySelectorAll("[data-page]").forEach(b => b.addEventListener("click", () => go(b.dataset.page)));
+
+/* ---------- ACCOUNTS ---------- */
+const CAT = {paused:{cls:"s-paused",icon:"fa-pause"}, match:{cls:"s-match",icon:"fa-crosshairs"}, online:{cls:"s-online",icon:"fa-globe"}, search:{cls:"s-search",icon:"fa-magnifying-glass"}, error:{cls:"s-error",icon:"fa-triangle-exclamation"}};
+function nodeCategory(a){
+  if(a.is_paused || a.status === "PAUSED") return "paused";
+  const s = a.status || "ONLINE";
+  return s === "IN_MATCH" ? "match" : s === "ONLINE" ? "online" : s === "SEARCHING" ? "search" : "error";
+}
+function fmtDur(sec){
+  sec = Math.max(0, Math.floor(Number(sec) || 0));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60, p = n => String(n).padStart(2,"0");
+  return h > 0 ? `${h}h ${p(m)}m` : `${p(m)}m ${p(s)}s`;
+}
+function nodeHTML(acc, uid, c){
+  const i = CAT[c.cat];
+  return `
+  <div class="node-head">
+    <div class="who">
+      <div class="ava"><div class="ring" style="--p:${c.pct.toFixed(1)}"></div><div class="ava-in"><i class="fa-solid fa-user-astronaut"></i></div><span class="lvl">L${c.level}</span></div>
+      <div class="who-t">
+        <div class="name"><span class="nick">${esc(acc.nickname || "Unknown")}</span><span class="region">${esc(acc.region || "BD")}</span></div>
+        <div class="uid"><span>UID ${esc(uid)}</span><button class="mini" data-act="copy"><i class="fa-regular fa-copy"></i></button></div>
+      </div>
+    </div>
+    <span class="badge ${i.cls}"><i class="fa-solid ${i.icon}"></i>${esc(c.stText)}</span>
+  </div>
+  <div class="metrics">
+    <div class="metric"><span>Initial</span><strong>${Number(acc.initial_exp || 0).toLocaleString()}</strong></div>
+    <div class="metric"><span>Current</span><strong>${c.curExp.toLocaleString()}</strong></div>
+    <div class="metric gain"><span>Gained</span><strong>+${Number(acc.gained_exp || 0).toLocaleString()}</strong></div>
+  </div>
+  <div>
+    <div class="prog-top"><span>Lv ${c.level}</span><span>${c.isMax ? "Max level" : c.remaining.toLocaleString() + " EXP left"}</span><span>Lv ${c.nextLvl}</span></div>
+    <div class="track"><div class="fill" style="width:${c.pct.toFixed(1)}%"></div></div>
+    <div class="prog-bot"><span>${c.earned.toLocaleString()} / ${c.needed.toLocaleString()}</span><span class="pct">${c.pct.toFixed(1)}%</span></div>
+  </div>
+  <div class="node-foot">
+    <span class="time"><i class="fa-solid fa-stopwatch"></i><b class="acc-time">00m 00s</b></span>
+    <div class="acts">
+      <button class="act" data-act="pause"><i class="fa-solid ${c.cat === "paused" ? "fa-play" : "fa-pause"}"></i></button>
+      <button class="act" data-act="restart"><i class="fa-solid fa-rotate-right"></i></button>
+      <button class="act" data-act="sync"><i class="fa-solid fa-arrows-rotate"></i></button>
+      <button class="act danger" data-act="delete"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  </div>`;
+}
+function renderAccounts(accounts, force){
+  const box = $("accounts");
+  if(!box) return;
+  const cats = accounts.map(nodeCategory);
+  $("btnPauseAll").innerHTML = accounts.length && cats.every(c => c === "paused")
+    ? '<i class="fa-solid fa-play"></i><span>Resume All</span>' : '<i class="fa-solid fa-pause"></i><span>Pause All</span>';
+  const n = {all:accounts.length, in_match:0, online:0, paused:0};
+  cats.forEach(c => { if(c === "match"){ n.in_match++; n.online++; } else if(c === "online" || c === "search") n.online++; else if(c === "paused") n.paused++; });
+  Object.keys(n).forEach(k => { const el = $("f-" + k); if(el) el.textContent = n[k]; });
+  const cn = $("connecting"); if(cn) cn.remove();
+  if(!accounts.length){
+    box.querySelectorAll(".node").forEach(c => c.remove());
+    let e = box.querySelector(".empty"); if(!e){ e = document.createElement("div"); e.className = "empty"; box.appendChild(e); }
+    e.innerHTML = `<i class="fa-solid fa-ghost big"></i>No accounts yet.<br><button class="btn ok" data-open="teamModal"><i class="fa-solid fa-users-gear"></i>Create Solo</button><button class="btn primary" data-act="add"><i class="fa-solid fa-plus"></i>Add Account</button>`;
+    $("noMatch").hidden = true; return;
+  }
+  box.querySelectorAll(".empty").forEach(e => e.remove());
+  const uids = new Set(accounts.map(a => String(a.uid)));
+  box.querySelectorAll(".node").forEach(c => { if(!uids.has(c.dataset.uid)) c.remove(); });
+  accounts.forEach((acc, idx) => {
+    const uid = String(acc.uid), cat = cats[idx];
+    const level = Math.min(100, Math.max(1, parseInt(acc.level) || 1)), isMax = level >= 100, nextLvl = Math.min(100, level + 1);
+    const baseExp = EXP_TABLE[level] ?? 0, target = EXP_TABLE[nextLvl] ?? baseExp + 50000;
+    const needed = Math.max(1, target - baseExp), curExp = Number(acc.current_exp || 0);
+    const earned = Math.max(0, curExp - baseExp), remaining = Math.max(0, target - curExp);
+    const pct = isMax ? 100 : Math.min(100, Math.max(0, earned / needed * 100));
+    const stText = cat === "paused" ? "PAUSED" : cat === "match" ? `IN MATCH (${acc.active_matches || 1})` : cat === "error" ? (acc.status || "ERROR") : (acc.status || "ONLINE");
+    const c = {level, nextLvl, isMax, curExp, earned, needed, remaining, pct, cat, stText};
+    let card = $("acc-" + uid);
+    if(!card){ card = document.createElement("div"); card.id = "acc-" + uid; card.className = "node glow"; }
+    if(card.parentNode !== box) box.appendChild(card);
+    Object.assign(card.dataset, {uid, nick: acc.nickname || "", status: cat, paused: cat === "paused" ? "1" : "0", auth: acc.auth_uid || ""});
+    const sig = [level, acc.nickname, acc.region, stText, cat, acc.initial_exp, curExp, acc.gained_exp].join("|");
+    if(force || card._sig !== sig){ card.innerHTML = nodeHTML(acc, uid, c); card._sig = sig; }
+    const tm = card.querySelector(".acc-time");
+    if(tm){ tm.dataset.uptime = Math.floor(acc.uptime_seconds || 0); tm.dataset.paused = cat === "paused" ? "1" : "0"; tm.textContent = fmtDur(acc.uptime_seconds || 0); }
+  });
+  filterAccounts();
+}
+const accountsBox = $("accounts");
+if(accountsBox){
+  accountsBox.addEventListener("click", e => {
+    const o = e.target.closest("[data-open]"); if(o) return openModal(o.dataset.open);
+    const b = e.target.closest("[data-act]"); if(!b) return;
+    if(b.dataset.act === "add") return openModal("addModal");
+    const card = b.closest(".node"); if(!card) return;
+    const uid = card.dataset.uid;
+    ({pause: () => togglePause(uid), restart: () => restartAcc(uid), sync: () => refreshAcc(uid), delete: () => deleteAccount(uid, card.dataset.auth), copy: () => copyText(uid)})[b.dataset.act]?.();
+  });
+}
+function filterAccounts(){
+  const q = $("accountSearch").value.toLowerCase().trim(); let shown = 0;
+  const cards = document.querySelectorAll("#accounts .node");
+  cards.forEach(card => {
+    const st = card.dataset.status, paused = card.dataset.paused === "1";
+    let ok = !q || card.dataset.uid.toLowerCase().includes(q) || card.dataset.nick.toLowerCase().includes(q);
+    if(activeFilter === "in_match") ok = ok && st === "match";
+    else if(activeFilter === "online") ok = ok && !paused && ["online","match","search"].includes(st);
+    else if(activeFilter === "paused") ok = ok && paused;
+    card.hidden = !ok; if(ok) shown++;
+  });
+  $("noMatch").hidden = !(cards.length && !shown);
+}
+$("accountSearch").addEventListener("input", filterAccounts);
+$("nodeFilters").addEventListener("click", e => {
+  const b = e.target.closest("button[data-f]"); if(!b) return;
+  activeFilter = b.dataset.f;
+  $("nodeFilters").querySelectorAll("button").forEach(x => x.classList.toggle("active", x === b));
+  filterAccounts();
+});
+
+/* ---------- CONSOLE ---------- */
+function scrollLogsToEnd(){ const s = $("console"); if(s) s.scrollTop = s.scrollHeight; }
+function renderLogs(logs){
+  const s = $("console"); if(!s) return;
+  let list = logs || [];
+  if(activeLogFilter === "match") list = list.filter(l => String(l.message || "").toLowerCase().includes("match"));
+  else if(activeLogFilter === "success") list = list.filter(l => l.level === "success" || String(l.message || "").includes("EXP"));
+  else if(activeLogFilter === "error") list = list.filter(l => l.level === "error" || l.level === "warning");
+  $("logCount").textContent = list.length;
+  const prev = s.scrollTop; rendering = true;
+  s.innerHTML = list.length
+    ? list.slice(-400).map(l => `<div class="log"><span class="log-ts">[${esc(l.time || "00:00:00")}]</span><span class="log-msg ${esc(l.level || "info")}">&gt; ${esc(l.message || "")}</span></div>`).join("")
+    : '<div class="term-empty">No logs yet.</div>';
+  if(autoScroll) scrollLogsToEnd(); else s.scrollTop = prev;
+  requestAnimationFrame(() => requestAnimationFrame(() => { rendering = false; }));
+}
+$("logFilters").addEventListener("click", e => {
+  const b = e.target.closest("button[data-f]"); if(!b) return;
+  activeLogFilter = b.dataset.f;
+  $("logFilters").querySelectorAll("button").forEach(x => x.classList.toggle("active", x === b));
+  renderLogs(state.logs);
+});
+$("btnClearLogs").addEventListener("click", () => guard("clearLogs", async () => {
+  const r = await fetch("/api/logs/clear", {method:"POST", credentials:"include"}); if(!r.ok) return toast("Failed", "error");
+  state.logs = []; renderLogs([]); toast("Cleared", "success");
+}));
+$("btnAutoscroll").addEventListener("click", () => { autoScroll = !autoScroll; $("btnAutoscroll").classList.toggle("on", autoScroll); if(autoScroll) scrollLogsToEnd(); });
+$("console").addEventListener("scroll", () => {
+  if(rendering) return;
+  const s = $("console"), atEnd = s.scrollHeight - s.scrollTop - s.clientHeight <= 80;
+  if(autoScroll && !atEnd){ autoScroll = false; $("btnAutoscroll").classList.remove("on"); }
+  else if(!autoScroll && atEnd){ autoScroll = true; $("btnAutoscroll").classList.add("on"); }
+});
+
+/* ---------- STATS ---------- */
+function setStatus(on){
+  state.online = on;
+  $("pillText").textContent = on ? "ONLINE" : "OFFLINE";
+  const s = $("sideStatus"); s.textContent = on ? "ONLINE" : "OFFLINE"; s.style.color = on ? "var(--ok)" : "var(--err)";
+  $("pill").classList.toggle("off", !on);
+}
+const COUNT = new Set(["stat-accounts","stat-started","stat-completed","stat-exp"]), tw = {};
+function setText(id, v){
+  const el = $(id); if(!el) return;
+  const str = String(v ?? ""), m = COUNT.has(id) && str.match(/^(\+?)([\d,]+)$/);
+  if(!m){ el.textContent = str; return; }
+  const to = parseInt(m[2].replace(/,/g, ""), 10), from = parseFloat(el.dataset.n || 0);
+  if(from === to){ el.textContent = str; return; }
+  el.dataset.n = to; const t0 = performance.now(); cancelAnimationFrame(tw[id]);
+  const step = now => {
+    const k = Math.min(1, (now - t0) / 700), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = m[1] + Math.round(from + (to - from) * e).toLocaleString();
+    if(k < 1) tw[id] = requestAnimationFrame(step); else el.textContent = str;
+  };
+  tw[id] = requestAnimationFrame(step);
+}
+function renderOverview(d){
+  const accs = state.accounts;
+  setText("stat-accounts", d.total_accounts ?? accs.length);
+  setText("stat-started", d.total_matches_started || 0);
+  setText("stat-completed", d.total_matches || 0);
+  setText("stat-exp", "+" + Number(d.total_gained_exp || 0).toLocaleString());
+  setText("stat-active-matches", (d.total_active_matches || 0) + " Active");
+  setText("stat-online", accs.filter(a => !(a.is_paused || a.status === "PAUSED") && (a.status === "ONLINE" || a.status === "IN_MATCH")).length + " Online");
+  const upH = Math.max(0.016, (Number(d.uptime) || 60) / 3600);
+  setText("stat-per-hour", "~" + Math.round((d.total_matches_started || 0) / upH) + " / hour");
+  setText("stat-exp-rate", "~" + Number(d.exp_per_hour || 0).toLocaleString() + " EXP/hr");
+}
+let inflight = false;
+async function fetchStats(manual){
+  if(inflight) return; inflight = true;
+  const ic = $("syncIcon"); if(ic) ic.classList.add("spin");
+  try{
+    const r = await fetch("/api/stats", {cache:"no-store", credentials:"include"});
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    state.accounts = Array.isArray(d.accounts) ? d.accounts : [];
+    state.logs = Array.isArray(d.logs) ? d.logs : [];
+    state.last = d; state.loaded = true;
+    if(d.uptime != null && Number.isFinite(Number(d.uptime))){ state.serverUptime = Number(d.uptime); state.upAt = Date.now(); }
+    renderAccounts(state.accounts, false); renderLogs(state.logs); renderOverview(d); setStatus(true);
+  }catch(e){
+    console.warn("Backend sync error:", e);
+    if(state.online || manual) toast("Backend connection failed", "error");
+    setStatus(false);
+  }finally{ inflight = false; setTimeout(() => { if(ic) ic.classList.remove("spin"); }, 400); }
+}
+$("syncBtn").addEventListener("click", () => fetchStats(true));
+
+/* ---------- ADD ACCOUNT ---------- */
 function toggleFormType(){ const g = $("accType").value === "guest"; $("guestInputs").hidden = !g; $("tokenInputs").hidden = g; }
 $("accType").addEventListener("change", toggleFormType);
 $("btnAdd").addEventListener("click", () => openModal("addModal"));
@@ -450,7 +670,7 @@ $("addForm").addEventListener("submit", e => {
   });
 });
 
-/* create solo */
+/* ---------- CREATE SOLO ---------- */
 $("teamForm").addEventListener("submit", e => {
   e.preventDefault();
   const region = $("teamRegion").value, clan_id = $("teamClan").value.trim(), count = parseInt($("teamCount").value, 10), password = $("teamPass").value.trim() || "RAFIN TxT";
@@ -465,7 +685,7 @@ $("teamForm").addEventListener("submit", e => {
   });
 });
 
-/* account actions */
+/* ---------- ACCOUNT ACTIONS ---------- */
 async function deleteAccount(uid, authUid){
   if(!await confirmDialog(`Remove account ${uid}?`)) return;
   guard("del" + uid, async () => {
@@ -533,220 +753,6 @@ $("btnRandomUser").addEventListener("click", async () => {
   else toast(d.error || "Failed", "error");
 });
 
-/* ---------- NAV ---------- */
-const PAGES = ["core", "targets", "terminal", "admin"];
-function go(page){
-  if(!PAGES.includes(page)) page = "core";
-  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + page));
-  document.querySelectorAll("[data-page]").forEach(b => {
-    const on = b.dataset.page === page; b.classList.toggle("active", on);
-    if(on) $("topTitle").textContent = b.dataset.title;
-  });
-  $("content").scrollTop = 0;
-  if(page === "admin") fetchUsers();
-  if(page === "terminal") requestAnimationFrame(() => { if(autoScroll) scrollLogsToEnd(); });
-}
-document.querySelectorAll("[data-page]").forEach(b => b.addEventListener("click", () => go(b.dataset.page)));
-
-/* ---------- ACCOUNTS ---------- */
-const CAT = {paused:{cls:"s-paused",icon:"fa-pause"}, match:{cls:"s-match",icon:"fa-crosshairs"}, online:{cls:"s-online",icon:"fa-globe"}, search:{cls:"s-search",icon:"fa-magnifying-glass"}, error:{cls:"s-error",icon:"fa-triangle-exclamation"}};
-function nodeCategory(a){
-  if(a.is_paused || a.status === "PAUSED") return "paused";
-  const s = a.status || "ONLINE";
-  return s === "IN_MATCH" ? "match" : s === "ONLINE" ? "online" : s === "SEARCHING" ? "search" : "error";
-}
-function fmtDur(sec){
-  sec = Math.max(0, Math.floor(Number(sec) || 0));
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60, p = n => String(n).padStart(2,"0");
-  return h > 0 ? `${h}h ${p(m)}m` : `${p(m)}m ${p(s)}s`;
-}
-function nodeHTML(acc, uid, c){
-  const i = CAT[c.cat];
-  return `
-  <div class="node-head">
-    <div class="who">
-      <div class="ava"><div class="ring" style="--p:${c.pct.toFixed(1)}"></div><div class="ava-in"><i class="fa-solid fa-user-astronaut"></i></div><span class="lvl">L${c.level}</span></div>
-      <div class="who-t">
-        <div class="name"><span class="nick">${esc(acc.nickname || "Unknown")}</span><span class="region">${esc(acc.region || "BD")}</span></div>
-        <div class="uid"><span>UID ${esc(uid)}</span><button class="mini" data-act="copy"><i class="fa-regular fa-copy"></i></button></div>
-      </div>
-    </div>
-    <span class="badge ${i.cls}"><i class="fa-solid ${i.icon}"></i>${esc(c.stText)}</span>
-  </div>
-  <div class="metrics">
-    <div class="metric"><span>Initial</span><strong>${Number(acc.initial_exp || 0).toLocaleString()}</strong></div>
-    <div class="metric"><span>Current</span><strong>${c.curExp.toLocaleString()}</strong></div>
-    <div class="metric gain"><span>Gained</span><strong>+${Number(acc.gained_exp || 0).toLocaleString()}</strong></div>
-  </div>
-  <div>
-    <div class="prog-top"><span>Lv ${c.level}</span><span>${c.isMax ? "Max level" : c.remaining.toLocaleString() + " EXP left"}</span><span>Lv ${c.nextLvl}</span></div>
-    <div class="track"><div class="fill" style="width:${c.pct.toFixed(1)}%"></div></div>
-    <div class="prog-bot"><span>${c.earned.toLocaleString()} / ${c.needed.toLocaleString()}</span><span class="pct">${c.pct.toFixed(1)}%</span></div>
-  </div>
-  <div class="node-foot">
-    <span class="time"><i class="fa-solid fa-stopwatch"></i><b class="acc-time">00m 00s</b></span>
-    <div class="acts">
-      <button class="act" data-act="pause"><i class="fa-solid ${c.cat === "paused" ? "fa-play" : "fa-pause"}"></i></button>
-      <button class="act" data-act="restart"><i class="fa-solid fa-rotate-right"></i></button>
-      <button class="act" data-act="sync"><i class="fa-solid fa-arrows-rotate"></i></button>
-      <button class="act danger" data-act="delete"><i class="fa-solid fa-trash"></i></button>
-    </div>
-  </div>`;
-}
-function renderAccounts(accounts, force){
-  const box = $("accounts"), cats = accounts.map(nodeCategory);
-  $("btnPauseAll").innerHTML = accounts.length && cats.every(c => c === "paused")
-    ? '<i class="fa-solid fa-play"></i><span>Resume All</span>' : '<i class="fa-solid fa-pause"></i><span>Pause All</span>';
-  const n = {all:accounts.length, in_match:0, online:0, paused:0};
-  cats.forEach(c => { if(c === "match"){ n.in_match++; n.online++; } else if(c === "online" || c === "search") n.online++; else if(c === "paused") n.paused++; });
-  Object.keys(n).forEach(k => $("f-" + k).textContent = n[k]);
-  const cn = $("connecting"); if(cn) cn.remove();
-  if(!accounts.length){
-    box.querySelectorAll(".node").forEach(c => c.remove());
-    let e = box.querySelector(".empty"); if(!e){ e = document.createElement("div"); e.className = "empty"; box.appendChild(e); }
-    e.innerHTML = `<i class="fa-solid fa-ghost big"></i>No accounts yet.<br><button class="btn ok" data-open="teamModal"><i class="fa-solid fa-users-gear"></i>Create Solo</button><button class="btn primary" data-act="add"><i class="fa-solid fa-plus"></i>Add Account</button>`;
-    $("noMatch").hidden = true; return;
-  }
-  box.querySelectorAll(".empty").forEach(e => e.remove());
-  const uids = new Set(accounts.map(a => String(a.uid)));
-  box.querySelectorAll(".node").forEach(c => { if(!uids.has(c.dataset.uid)) c.remove(); });
-  accounts.forEach((acc, idx) => {
-    const uid = String(acc.uid), cat = cats[idx];
-    const level = Math.min(100, Math.max(1, parseInt(acc.level) || 1)), isMax = level >= 100, nextLvl = Math.min(100, level + 1);
-    const baseExp = EXP_TABLE[level] ?? 0, target = EXP_TABLE[nextLvl] ?? baseExp + 50000;
-    const needed = Math.max(1, target - baseExp), curExp = Number(acc.current_exp || 0);
-    const earned = Math.max(0, curExp - baseExp), remaining = Math.max(0, target - curExp);
-    const pct = isMax ? 100 : Math.min(100, Math.max(0, earned / needed * 100));
-    const stText = cat === "paused" ? "PAUSED" : cat === "match" ? `IN MATCH (${acc.active_matches || 1})` : cat === "error" ? (acc.status || "ERROR") : (acc.status || "ONLINE");
-    const c = {level, nextLvl, isMax, curExp, earned, needed, remaining, pct, cat, stText};
-    let card = $("acc-" + uid);
-    if(!card){ card = document.createElement("div"); card.id = "acc-" + uid; card.className = "node glow"; }
-    if(card.parentNode !== box) box.appendChild(card);
-    Object.assign(card.dataset, {uid, nick: acc.nickname || "", status: cat, paused: cat === "paused" ? "1" : "0", auth: acc.auth_uid || ""});
-    const sig = [level, acc.nickname, acc.region, stText, cat, acc.initial_exp, curExp, acc.gained_exp].join("|");
-    if(force || card._sig !== sig){ card.innerHTML = nodeHTML(acc, uid, c); card._sig = sig; }
-    const tm = card.querySelector(".acc-time");
-    if(tm){ tm.dataset.uptime = Math.floor(acc.uptime_seconds || 0); tm.dataset.paused = cat === "paused" ? "1" : "0"; tm.textContent = fmtDur(acc.uptime_seconds || 0); }
-  });
-  filterAccounts();
-}
-$("accounts").addEventListener("click", e => {
-  const o = e.target.closest("[data-open]"); if(o) return openModal(o.dataset.open);
-  const b = e.target.closest("[data-act]"); if(!b) return;
-  if(b.dataset.act === "add") return openModal("addModal");
-  const card = b.closest(".node"); if(!card) return;
-  const uid = card.dataset.uid;
-  ({pause: () => togglePause(uid), restart: () => restartAcc(uid), sync: () => refreshAcc(uid), delete: () => deleteAccount(uid, card.dataset.auth), copy: () => copyText(uid)})[b.dataset.act]?.();
-});
-function filterAccounts(){
-  const q = $("accountSearch").value.toLowerCase().trim(); let shown = 0;
-  const cards = document.querySelectorAll("#accounts .node");
-  cards.forEach(card => {
-    const st = card.dataset.status, paused = card.dataset.paused === "1";
-    let ok = !q || card.dataset.uid.toLowerCase().includes(q) || card.dataset.nick.toLowerCase().includes(q);
-    if(activeFilter === "in_match") ok = ok && st === "match";
-    else if(activeFilter === "online") ok = ok && !paused && ["online","match","search"].includes(st);
-    else if(activeFilter === "paused") ok = ok && paused;
-    card.hidden = !ok; if(ok) shown++;
-  });
-  $("noMatch").hidden = !(cards.length && !shown);
-}
-$("accountSearch").addEventListener("input", filterAccounts);
-$("nodeFilters").addEventListener("click", e => {
-  const b = e.target.closest("button[data-f]"); if(!b) return;
-  activeFilter = b.dataset.f;
-  $("nodeFilters").querySelectorAll("button").forEach(x => x.classList.toggle("active", x === b));
-  filterAccounts();
-});
-
-/* ---------- CONSOLE ---------- */
-function scrollLogsToEnd(){ const s = $("console"); s.scrollTop = s.scrollHeight; }
-function renderLogs(logs){
-  const s = $("console"); let list = logs || [];
-  if(activeLogFilter === "match") list = list.filter(l => String(l.message || "").toLowerCase().includes("match"));
-  else if(activeLogFilter === "success") list = list.filter(l => l.level === "success" || String(l.message || "").includes("EXP"));
-  else if(activeLogFilter === "error") list = list.filter(l => l.level === "error" || l.level === "warning");
-  $("logCount").textContent = list.length;
-  const prev = s.scrollTop; rendering = true;
-  s.innerHTML = list.length
-    ? list.slice(-400).map(l => `<div class="log"><span class="log-ts">[${esc(l.time || "00:00:00")}]</span><span class="log-msg ${esc(l.level || "info")}">&gt; ${esc(l.message || "")}</span></div>`).join("")
-    : '<div class="term-empty">No logs yet.</div>';
-  if(autoScroll) scrollLogsToEnd(); else s.scrollTop = prev;
-  requestAnimationFrame(() => requestAnimationFrame(() => { rendering = false; }));
-}
-$("logFilters").addEventListener("click", e => {
-  const b = e.target.closest("button[data-f]"); if(!b) return;
-  activeLogFilter = b.dataset.f;
-  $("logFilters").querySelectorAll("button").forEach(x => x.classList.toggle("active", x === b));
-  renderLogs(state.logs);
-});
-$("btnClearLogs").addEventListener("click", () => guard("clearLogs", async () => {
-  const r = await fetch("/api/logs/clear", {method:"POST", credentials:"include"}); if(!r.ok) return toast("Failed", "error");
-  state.logs = []; renderLogs([]); toast("Cleared", "success");
-}));
-$("btnAutoscroll").addEventListener("click", () => { autoScroll = !autoScroll; $("btnAutoscroll").classList.toggle("on", autoScroll); if(autoScroll) scrollLogsToEnd(); });
-$("console").addEventListener("scroll", () => {
-  if(rendering) return;
-  const s = $("console"), atEnd = s.scrollHeight - s.scrollTop - s.clientHeight <= 80;
-  if(autoScroll && !atEnd){ autoScroll = false; $("btnAutoscroll").classList.remove("on"); }
-  else if(!autoScroll && atEnd){ autoScroll = true; $("btnAutoscroll").classList.add("on"); }
-});
-
-/* ---------- STATS ---------- */
-function setStatus(on){
-  state.online = on;
-  $("pillText").textContent = on ? "ONLINE" : "OFFLINE";
-  const s = $("sideStatus"); s.textContent = on ? "ONLINE" : "OFFLINE"; s.style.color = on ? "var(--ok)" : "var(--err)";
-  $("pill").classList.toggle("off", !on);
-}
-const COUNT = new Set(["stat-accounts","stat-started","stat-completed","stat-exp"]), tw = {};
-function setText(id, v){
-  const el = $(id); if(!el) return;
-  const str = String(v ?? ""), m = COUNT.has(id) && str.match(/^(\+?)([\d,]+)$/);
-  if(!m){ el.textContent = str; return; }
-  const to = parseInt(m[2].replace(/,/g, ""), 10), from = parseFloat(el.dataset.n || 0);
-  if(from === to){ el.textContent = str; return; }
-  el.dataset.n = to; const t0 = performance.now(); cancelAnimationFrame(tw[id]);
-  const step = now => {
-    const k = Math.min(1, (now - t0) / 700), e = 1 - Math.pow(1 - k, 3);
-    el.textContent = m[1] + Math.round(from + (to - from) * e).toLocaleString();
-    if(k < 1) tw[id] = requestAnimationFrame(step); else el.textContent = str;
-  };
-  tw[id] = requestAnimationFrame(step);
-}
-function renderOverview(d){
-  const accs = state.accounts;
-  setText("stat-accounts", d.total_accounts ?? accs.length);
-  setText("stat-started", d.total_matches_started || 0);
-  setText("stat-completed", d.total_matches || 0);
-  setText("stat-exp", "+" + Number(d.total_gained_exp || 0).toLocaleString());
-  setText("stat-active-matches", (d.total_active_matches || 0) + " Active");
-  setText("stat-online", accs.filter(a => !(a.is_paused || a.status === "PAUSED") && (a.status === "ONLINE" || a.status === "IN_MATCH")).length + " Online");
-  const upH = Math.max(0.016, (Number(d.uptime) || 60) / 3600);
-  setText("stat-per-hour", "~" + Math.round((d.total_matches_started || 0) / upH) + " / hour");
-  setText("stat-exp-rate", "~" + Number(d.exp_per_hour || 0).toLocaleString() + " EXP/hr");
-}
-let inflight = false;
-async function fetchStats(manual){
-  if(inflight) return; inflight = true;
-  const ic = $("syncIcon"); ic.classList.add("spin");
-  try{
-    const r = await fetch("/api/stats", {cache:"no-store", credentials:"include"});
-    if(!r.ok) throw new Error("HTTP " + r.status);
-    const d = await r.json();
-    state.accounts = Array.isArray(d.accounts) ? d.accounts : [];
-    state.logs = Array.isArray(d.logs) ? d.logs : [];
-    state.last = d; state.loaded = true;
-    if(d.uptime != null && Number.isFinite(Number(d.uptime))){ state.serverUptime = Number(d.uptime); state.upAt = Date.now(); }
-    renderAccounts(state.accounts, false); renderLogs(state.logs); renderOverview(d); setStatus(true);
-  }catch(e){
-    console.warn("Backend sync error:", e);
-    if(state.online || manual) toast("Backend connection failed", "error");
-    setStatus(false);
-  }finally{ inflight = false; setTimeout(() => ic.classList.remove("spin"), 400); }
-}
-$("syncBtn").addEventListener("click", () => fetchStats(true));
-
 /* ---------- UTILS ---------- */
 function copyText(txt){
   const ok = () => toast("Copied: " + txt, "success");
@@ -769,7 +775,13 @@ setInterval(() => {
     const v = (parseInt(u.dataset.uptime || "0", 10) || 0) + 1; u.dataset.uptime = v; u.textContent = fmtDur(v);
   });
 }, 1000);
-toggleFormType();
+
+/* ---------- BOOT ---------- */
+try{ toggleFormType(); }catch(e){ console.warn(e); }
+go("core");
+fetchStats();
+started = true;
+setInterval(() => { if(!document.hidden) fetchStats(); }, 3000);
 </script>
 </body>
 </html>
