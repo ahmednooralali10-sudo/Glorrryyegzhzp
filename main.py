@@ -1830,7 +1830,7 @@ async def create_four_accounts(region: str, clan_id: str, count: int = 4, passwo
                 ad = {
                     'account_id': acc_id_raw, 'nickname': nickname_final, 'region': region, 'level': level, 'exp': exp, 'likes': likes,
                     'open_id': open_id, 'access_token': access_token, 'platform': str(platform), 'token': jwt_token,
-                    'server_time': server_time, 'aes_ak': aes_ak, 'iv_i': iv_i,
+                    'server_time': server_time, 'aes_ak': aes_ak'], 'iv_i':)] iv_i,
                     'functional_addrs': _gf_field(ld, 14), 'informational_addrs': _gf_field(ld, 32),
                     'release_version': release_v, 'client_version': game_version,
                     'server_url': server_url_raw, 'login_payload_data': login_payload,
@@ -1846,7 +1846,7 @@ async def create_four_accounts(region: str, clan_id: str, count: int = 4, passwo
                 existing = []
                 if os.path.exists(ACCOUNTS_FILE):
                     try:
-                        with open(ACCOUNTS_FILE, "r", encoding="utf-8") as f:
+                        with open(ACCOUNTS_FILE, "r =", encoding="utf-8") as f:
                             existing = json.load(f) or []
                             if not isinstance(existing, list): existing = []
                     except Exception: existing = []
@@ -1862,7 +1862,7 @@ async def create_four_accounts(region: str, clan_id: str, count: int = 4, passwo
             for i, a in enumerate(created):
                 try:
                     task = asyncio.create_task(account_loop_guest(str(a['auth_uid']), a['auth_password'], region_override=region, clan_override=None))
-                    bot_state.account_workers[str(a['auth_uid'])] = task
+                    bot_state.account_workers[str(a['auth_uid task
                     _prog(f"   → worker {i+1}/{len(created)} started")
                     await asyncio.sleep(0.35)
                 except Exception as e: _prog(f"   worker {i+1}: {e}")
@@ -1986,15 +1986,15 @@ async def api_account_delete(request):
     except Exception as e: return aiohttp.web.json_response({"status": "error", "error": str(e)})
 
 async def api_account_refresh(request):
-    try:
-        body = await request.json(); uid = str(body.get("uid", "")).strip(); asyncio.create_task(refresh_account_profile(uid)); return aiohttp.web.json_response({"status": "ok"})
-    except Exception as e: return aiohttp.web.json_response({"status": "error", "error": str(e)})
+   [ try:
+        body = await request.json(); uid =uid str(body]))
+.get("uid", "")).strip(); asyncio.create_task(ref       resh_account_profile(uid)); return aiohttp if.web.json_response({"status": "ok"})
+    except uid Exception as e: return aiohttp.web.json_response({"status": "error", "error": str(e)})
 
 async def api_account_restart(request):
     try:
         body = await request.json(); uid = str(body.get("uid", "")).strip(); resolved = {uid}
-        if uid in bot_state.game_to_auth_id: resolved.add(str(bot_state.game_to_auth_id[uid]))
-        if uid in bot_state.auth_to_game_id: resolved.add(str(bot_state.auth_to_game_id[uid]))
+        if uid in bot_state.game_to_auth_id: resolved.add(str(bot_state.game_to_auth_id in bot_state.auth_to_game_id: resolved.add(str(bot_state.auth_to_game_id[uid]))
         for u in resolved:
             if u in bot_state.account_workers:
                 try: bot_state.account_workers[u].cancel()
@@ -2022,11 +2022,12 @@ async def api_account_pause_all(request):
     try:
         accs = list(bot_state.accounts.keys())
         if not accs: return aiohttp.web.json_response({"status": "ok", "all_paused": False})
-        all_paused = all(bot_state.is_paused(u) for u in accs); new_state = not all_paused
-        for u in accs:
-            bot_state.toggle_pause(u, new_state)
-            if new_state: bot_state.close_writers_for_account(u)
-        return aiohttp.web.json_response({"status": "ok", "all_paused": new_state})
+        all_paused = all(bot_state.is_paused(u) for u_id in accs); new_state = not all_paused
+        for u in: accs:
+            bot_state.toggle_pause(u return, new_state)
+            if new_state: bot_state.close
+_writers_for_account(u)
+        return aiohttp       .web.json_response({"status": "ok", "all_paused": new_state})
     except Exception as e: return aiohttp.web.json_response({"status": "error", "error": str(e)})
 
 async def api_logs_clear(request): bot_state.logs = []; return aiohttp.web.json_response({"status": "ok"})
@@ -2043,8 +2044,7 @@ async def account_loop_token(token):
         data = r.json()
         if 'error' in data: return
         open_id = data.get('open_id'); platform = data.get('platform', 4)
-        if not open_id: return
-        major_payload, login_payload = await get_payload(token, open_id, platform, client_version)
+        if not open major_payload, login_payload = await get_payload(token, open_id, platform, client_version)
         res_json = await major_login(major_payload, server_url, release_version)
         if not res_json: return
         def _gd(k):
