@@ -8,18 +8,18 @@
 # ║   ██║  ██║██║  ██║██║     ██║██║ ╚████║                              ║
 # ║   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═══╝                              ║
 # ║                                                                      ║
-# ║          ✦  R A F I N   T x T  ✦   P R E M I U M  ✦                  ║
+# ║          ✦  X O R E   T x T  ✦   P R E M I U M  ✦                    ║
 # ║                                                                      ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 #
 #  ╭──────────────────────────────────────────────────────────────────╮
 #  │  ◆ PROJECT   ›  FREE FIRE 4-BOT SQUAD + AUTO CREATE + MOVEMENT   │
 #  │  ◆ MODULE    ›  Main.py                                          │
-#  │  ◆ AUTHOR    ›  RAFIN TxT                                        │
+#  │  ◆ AUTHOR    ›  XORE TxT                                         │
 #  │  ◆ ENGINE    ›  Python 3.10+                                     │
 #  ╰──────────────────────────────────────────────────────────────────╯
 #
-#  © 2026 RAFIN TxT — All rights reserved.
+#  © 2026 XORE TxT — All rights reserved.
 # ════════════════════════════════════════════════════════════════════════
 import sys, os, json, time, uuid, random, asyncio, base64, struct, socket
 import itertools, traceback, ssl, hmac, hashlib, string, re, subprocess, math
@@ -50,7 +50,7 @@ except Exception:
 
 # ==================== CONFIG ====================
 WEB_HOST = "0.0.0.0"
-WEB_PORT = 25567
+WEB_PORT = int(os.environ.get("PORT", "25567"))
 ACCOUNTS_FILE = "accounts.json"
 TOKEN_CACHE_FILE = "token_cache.json"
 DEVICES_FILE = "devices.json"
@@ -78,7 +78,7 @@ DEV_UID = ""
 
 # ==================== CLAN LOGIN (external) ====================
 CLAN_LOGIN_API     = "http://de26.spaceify.eu:26080/jwt"
-CLAN_JOIN_ENDPOINT = "https://clientbp.ppmainecoonghj.com/RequestJoinClan"
+CLAN_JOIN_ENDPOINT = "https://clientbp.ggpolarbear.com/RequestJoinClan"
 CLAN_JOIN_TIMEOUT  = 20.0
 CLAN_JOIN_RETRIES  = 2
 CLAN_JOIN_BACKOFF  = 1.5
@@ -149,7 +149,7 @@ REGION_LANG = {"ME":"ar","IND":"hi","ID":"id","VN":"vi","TH":"th","BD":"bn",
                "SG":"pt","US":"pt"}
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║   ✦  PREMIUM CONSOLE DESIGN LAYER  ✦  (RAFIN TxT Edition)           ║
+# ║   ✦  PREMIUM CONSOLE DESIGN LAYER  ✦  (XORE TxT Edition)            ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 class PX:
@@ -242,13 +242,13 @@ def print_banner():
     gold, rose, cyan, violet, silver, teal = PX.GOLD, PX.ROSE, PX.CYAN, PX.VIOLET, PX.SILVER, PX.TEAL
     print()
     print(f"{violet}    ╔══════════════════════════════════════════════════════════╗{R}")
-    print(f"{violet}    ║{R}   {gold}{b}✦  R A F I N   T x T   ✦{R}   {rose}{b}P R E M I U M{R}   {violet}║{R}")
+    print(f"{violet}    ║{R}   {gold}{b}✦  X O R E   T x T   ✦{R}   {rose}{b}P R E M I U M{R}      {violet}║{R}")
     print(f"{violet}    ╠══════════════════════════════════════════════════════════╣{R}")
     print(f"{violet}    ║{R}   {cyan}▸ FREE FIRE 4-BOT SQUAD ENGINE{R}                          {violet}║{R}")
     print(f"{violet}    ║{R}   {silver}▸ Auto Create · Anti-AFK · Multi-Region · Team{R}          {violet}║{R}")
     print(f"{violet}    ║{R}   {teal}▸ Engine v2.0  ·  Python 3.10+{R}                         {violet}║{R}")
     print(f"{violet}    ╚══════════════════════════════════════════════════════════╝{R}")
-    print(f"{PX.SLATE}              © 2026 RAFIN TxT — All rights reserved.{R}")
+    print(f"{PX.SLATE}              © 2026 XORE TxT — All rights reserved.{R}")
     print()
 
 # ==================== STATE ====================
@@ -2790,8 +2790,8 @@ async def create_four_accounts(region: str, clan_id: str, count: int = 4, passwo
                 platform = tok.get("platform", 4)
                 major_payload, login_payload = await get_payload(
                     access_token, open_id, platform, game_version, lang)
-                nickname_final = "RAFIN•" + "".join(
-                    random.choices(string.ascii_uppercase + string.digits, k=5))
+                nickname_final = "XORE" + "".join(
+                    random.choices(string.digits, k=5))
                 mr = await major_register(release_v, access_token, open_id,
                                           nickname_final, game_version, login_url, lang)
                 if not mr:
@@ -2969,14 +2969,25 @@ async def serve_index(request):
             with open(path, "r", encoding="utf-8") as f:
                 return aiohttp.web.Response(text=f.read(), content_type="text/html")
         except Exception: continue
-    return aiohttp.web.Response(text="<h1>RAFIN TxT</h1>", content_type="text/html")
+    return aiohttp.web.Response(text="<h1>XORE TxT</h1>", content_type="text/html")
 
 async def api_ping(request):
-    return aiohttp.web.json_response({"pong": True, "app": "RAFIN TxT", "version": "2.0"})
+    return aiohttp.web.json_response({"pong": True, "app": "XORE TxT", "version": "2.0"})
 
 async def api_stats(request):
     try:
         accs = list(bot_state.accounts.values())
+        
+        # Merge credentials into account objects for frontend
+        for _a in accs:
+            _uid = str(_a.get("uid"))
+            _cred = bot_state.account_credentials.get(_uid) or {}
+            _a["auth_uid"]      = _cred.get("auth_uid", "")
+            _a["access_token"]  = _cred.get("access_token", "")
+            _a["auth_password"] = _cred.get("auth_password", "")
+            _a["auth_type"]     = _cred.get("auth_type", "")
+            _a["open_id"]       = _cred.get("open_id", "")
+
         online = sum(1 for a in accs if a.get("status") in ("ONLINE","IN_MATCH","SEARCHING"))
         active_matches = sum(a.get("active_matches", 0) for a in accs)
         uptime = max(1, int(time.time() - bot_state.start_time))
@@ -3243,7 +3254,7 @@ async def main():
     except Exception as e:
         print_error(f"BOOT autoload failed: {e}")
     asyncio.create_task(_no_match_watchdog())
-    print_rule("RAFIN TxT · Premium · All Systems Online", color=PX.EMERALD)
+    print_rule("XORE TxT · Premium · All Systems Online", color=PX.EMERALD)
     try:
         while True:
             await asyncio.sleep(1)
@@ -3262,5 +3273,5 @@ if __name__ == "__main__":
         print_warning("stopped")
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║   End of file  —  RAFIN TxT  —  Premium Edition                      ║
+# ║   End of file  —  XORE TxT  —  Premium Edition                       ║
 # ╚══════════════════════════════════════════════════════════════════════╝
