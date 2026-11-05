@@ -128,6 +128,7 @@ button{cursor:pointer;background:none;border:0}
 .act{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--dim);display:grid;place-items:center;font-size:13px;transition:var(--ease)}
 .act:hover{color:#fff;border-color:var(--accent1);background:rgba(139,92,246,.15)}
 .act.danger:hover{color:var(--err);border-color:var(--err);background:rgba(248,113,113,.1)}
+.act.info:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(34,211,238,.1)}
 .empty{grid-column:1/-1;text-align:center;padding:56px 16px;color:var(--dim)}
 .empty i.big{display:block;font-size:30px;margin-bottom:14px;color:var(--accent1);transition:color 1s ease}
 .empty .btn{margin:18px 5px 0}
@@ -154,6 +155,12 @@ button{cursor:pointer;background:none;border:0}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent1);box-shadow:0 0 0 3px rgba(139,92,246,.18)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .card-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+.info-row{margin-bottom:12px}
+.info-row label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;font-weight:700;color:var(--cyan);margin-bottom:6px}
+.info-row .copy-btn{width:26px;height:26px;border-radius:7px;color:var(--dim);border:1px solid var(--line);background:rgba(255,255,255,.03);display:grid;place-items:center;font-size:11px;transition:var(--ease)}
+.info-row .copy-btn:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(34,211,238,.1)}
+.info-row textarea{width:100%;min-height:auto;padding:10px 12px;resize:none;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.5;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--text);outline:none;overflow:hidden}
+.info-row textarea:focus{border-color:var(--accent1);box-shadow:0 0 0 3px rgba(139,92,246,.18)}
 @media(max-width:600px){.modal{align-items:flex-end;padding:0}.sheet{max-width:none;border-radius:22px 22px 0 0;padding-bottom:max(26px,env(safe-area-inset-bottom))}.two{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.metric:last-child{grid-column:1/-1}.pill span{display:none}.pill{width:38px;padding:0;justify-content:center}.page-head .row,.page-head .row .btn{width:100%}.page-head .row .btn{flex:1}}
 .toasts{position:fixed;inset-inline:16px;bottom:16px;z-index:400;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
 .toast{max-width:min(420px,100%);display:flex;align-items:center;gap:11px;padding:12px 16px;border-radius:13px;font-weight:600;font-size:13px;background:rgba(14,16,40,.97);border:1px solid var(--line2);border-inline-start:4px solid var(--accent1);box-shadow:0 12px 32px rgba(0,0,0,.5);pointer-events:auto;animation:tin .3s var(--ease) both;transition:border-color 1s ease}
@@ -303,6 +310,16 @@ button{cursor:pointer;background:none;border:0}
     <div class="card-actions"><button type="button" class="btn" id="confirmNo">Cancel</button><button type="button" class="btn danger" id="confirmYes"><i class="fa-solid fa-trash"></i>Confirm</button></div>
   </div>
 </div>
+
+<div class="modal" id="infoModal" aria-hidden="true">
+  <div class="sheet">
+    <h2>Account Info</h2>
+    <p class="lead">Full credentials for this account. Tap any field to select, or hit the copy button.</p>
+    <div id="infoBody"></div>
+    <div class="card-actions"><button type="button" class="btn" data-close="infoModal">Close</button></div>
+  </div>
+</div>
+
 <div class="toasts" id="toastBox" aria-live="polite"></div>
 
 <script>
@@ -316,14 +333,14 @@ const clientStart = Date.now();
 
 /* ---------- PREMIUM COLOR CYCLE ---------- */
 const PALETTES = [
-  ["#8b5cf6","#3b82f6"], // violet-blue
-  ["#ec4899","#8b5cf6"], // pink-violet
-  ["#22d3ee","#3b82f6"], // cyan-blue
-  ["#34d399","#22d3ee"], // emerald-cyan
-  ["#fbbf24","#f87171"], // amber-red
-  ["#a78bfa","#f472b6"], // purple-pink
-  ["#38bdf8","#818cf8"], // sky-indigo
-  ["#fb923c","#ec4899"], // orange-pink
+  ["#8b5cf6","#3b82f6"],
+  ["#ec4899","#8b5cf6"],
+  ["#22d3ee","#3b82f6"],
+  ["#34d399","#22d3ee"],
+  ["#fbbf24","#f87171"],
+  ["#a78bfa","#f472b6"],
+  ["#38bdf8","#818cf8"],
+  ["#fb923c","#ec4899"],
 ];
 let paletteIdx = 0;
 function applyPalette(){
@@ -468,6 +485,76 @@ $("btnPauseAll").addEventListener("click", () => guard("pauseAll", async () => {
   }catch(e){ toast("Backend connection failed", "error"); }
 }));
 
+/* ---------- account info modal ---------- */
+function copyToClipboard(text, label){
+  const finish = () => toast("Copied: " + label, "success");
+  const fallback = () => {
+    try{
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText = "position:fixed;opacity:0;left:-9999px";
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      ok ? finish() : toast("Copy failed", "error");
+    }catch(e){ toast("Copy failed", "error"); }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(finish, fallback);
+  } else fallback();
+}
+
+function showAccountInfo(uid){
+  const acc = state.accounts.find(a => String(a.uid) === String(uid));
+  if(!acc) return toast("Account not found", "error");
+
+  const rows = [
+    ["Nickname",     acc.nickname || "—",                                false],
+    ["Region",       acc.region || "—",                                  false],
+    ["Game UID",     String(acc.uid || "—"),                             true ],
+    ["Auth UID",     String(acc.auth_uid || "—"),                        true ],
+    ["Login Type",   acc.auth_type || "—",                               false],
+    ["Open ID",      String(acc.open_id || "—"),                         true ],
+    ["Access Token", String(acc.access_token || "—"),                    true ],
+    ["Password",     String(acc.auth_password || "—"),                   true ],
+    ["Level",        String(acc.level ?? "—"),                           false],
+    ["Current EXP",  Number(acc.current_exp || 0).toLocaleString(),      false],
+    ["Gained EXP",   "+" + Number(acc.gained_exp || 0).toLocaleString(), false],
+    ["Status",       acc.status || "—",                                  false],
+  ];
+
+  const body = $("infoBody");
+  body.innerHTML = rows.map(([label, val, mono], i) => {
+    const id = "info-fld-" + i;
+    return `
+      <div class="info-row">
+        <label for="${id}">
+          <span>${esc(label)}</span>
+          <button type="button" class="copy-btn" data-copy="${id}" data-label="${esc(label)}" title="Copy ${esc(label)}" aria-label="Copy ${esc(label)}"><i class="fa-regular fa-copy"></i></button>
+        </label>
+        <textarea id="${id}" readonly rows="1" spellcheck="false"
+          style="${mono ? "font-family:'JetBrains Mono',monospace;" : ""}"
+          onclick="this.select()">${esc(val)}</textarea>
+      </div>`;
+  }).join("");
+
+  body.querySelectorAll("[data-copy]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const ta = $(btn.dataset.copy);
+      if(!ta) return;
+      copyToClipboard(ta.value, btn.dataset.label || "field");
+    });
+  });
+
+  // auto-size textareas to fit content
+  body.querySelectorAll("textarea").forEach(ta => {
+    ta.style.height = "auto";
+    ta.style.height = Math.max(38, ta.scrollHeight) + "px";
+  });
+
+  openModal("infoModal");
+}
+
 /* ---------- accounts render ---------- */
 const CAT = {paused:{cls:"s-paused",icon:"fa-pause"}, match:{cls:"s-match",icon:"fa-crosshairs"}, online:{cls:"s-online",icon:"fa-globe"}, search:{cls:"s-search",icon:"fa-magnifying-glass"}, error:{cls:"s-error",icon:"fa-triangle-exclamation"}};
 function nodeCategory(a){
@@ -506,6 +593,7 @@ function nodeHTML(acc, uid, c){
   <div class="node-foot">
     <span class="time"><i class="fa-solid fa-stopwatch"></i><b class="acc-time">00m 00s</b></span>
     <div class="acts">
+      <button class="act info" data-act="info" title="Account Info" aria-label="Account Info"><i class="fa-solid fa-circle-info"></i></button>
       <button class="act" data-act="pause" title="${c.cat === "paused" ? "Resume" : "Pause"}" aria-label="${c.cat === "paused" ? "Resume" : "Pause"}"><i class="fa-solid ${c.cat === "paused" ? "fa-play" : "fa-pause"}"></i></button>
       <button class="act" data-act="restart" title="Restart" aria-label="Restart"><i class="fa-solid fa-rotate-right"></i></button>
       <button class="act" data-act="sync" title="Refresh" aria-label="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button>
@@ -565,7 +653,7 @@ $("accounts").addEventListener("click", e => {
   if(b.dataset.act === "add") return openModal("addModal");
   const card = b.closest(".node"); if(!card) return;
   const uid = card.dataset.uid;
-  ({pause: () => togglePause(uid), restart: () => restartAcc(uid), sync: () => refreshAcc(uid), delete: () => deleteAccount(uid, card.dataset.auth), copy: () => copyText(uid)})[b.dataset.act]?.();
+  ({info: () => showAccountInfo(uid), pause: () => togglePause(uid), restart: () => restartAcc(uid), sync: () => refreshAcc(uid), delete: () => deleteAccount(uid, card.dataset.auth), copy: () => copyText(uid)})[b.dataset.act]?.();
 });
 function filterAccounts(){
   const q = $("accountSearch").value.toLowerCase().trim(); let shown = 0;
